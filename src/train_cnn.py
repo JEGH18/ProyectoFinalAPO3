@@ -142,12 +142,11 @@ def main(epochs: int = 25, batch: int = 64):
                                    "f1": float(f[i])} for i in range(len(CLASSES))},
         "confusion_matrix": cm.tolist(),
     }
-    # reelegir mejor modelo global (incluida la CNN)
-    best = max(metrics["models"], key=lambda k: metrics["models"][k]["test_f1_macro"])
-    metrics["best_model"] = best
-    open(os.path.join(MODELS_DIR, "best_model.txt"), "w").write(best)
+    # La CNN no se evalúa por validación cruzada, por lo que NO se usa para
+    # reelegir el "mejor modelo" (que se elige por CV entre los clásicos en
+    # train.py). Solo se registran sus métricas para la comparación.
     json.dump(metrics, open(os.path.join(RESULTS_DIR, "metrics.json"), "w"), indent=2)
-    print(f"Guardado models/cnn.pt. Mejor modelo global: {best}")
+    print(f"Guardado models/cnn.pt (best_model se mantiene: {metrics.get('best_model')}).")
 
 
 if __name__ == "__main__":

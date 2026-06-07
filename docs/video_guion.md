@@ -32,15 +32,19 @@ minutos aproximados.
   Adam en la CNN, y la métrica F1-macro con validación cruzada.
 
 ## 5:00 – 6:30 · Resultados
-- Tabla de resultados: SVM 95.8 %, Random Forest 95.0 %, CNN 94.7 %, línea base
-  85.7 %.
+- Tabla de resultados: en prueba los tres mejores quedan casi empatados (SVM
+  94.9 %, CNN 95.3 %, Random Forest 94.4 %), muy por encima de la línea base
+  (83.8 %). El mejor por validación cruzada es la SVM (96.7 %), y por eso es el
+  modelo seleccionado.
 - Matrices de confusión (Fig. 5): los errores se concentran entre buena y mala.
 - Importancia de características (Fig. 6): el color (saturación/matiz) es lo más
   decisivo.
 
 ## 6:30 – 7:30 · Análisis crítico
-- Hallazgo: con pocos datos, las características a mano + SVM superan a una CNN
-  desde cero.
+- Hallazgo: los modelos clásicos (sobre características de color) y la CNN (sobre
+  píxeles) dan resultados equivalentes a esta escala de datos; el color es muy
+  informativo para la calidad.
+- Selección por validación cruzada (no por el test) para no "hacer trampa".
 - Honestidad: al principio la clase "regular" daba 100 % irreal porque el modelo
   reconocía el FONDO de los recortes; al enmascarar el fondo bajó a un realista
   96 %. Mencionar las limitaciones (un solo dataset, tamaño relativo, etc.).

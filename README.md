@@ -6,16 +6,18 @@ normalizado y clase pequeño/mediano/grande).
 
 Proyecto final de *Algoritmos y Programación III* (Universidad ICESI, 2026-1).
 
-## Resultados (conjunto de prueba, n = 867)
+## Resultados (conjunto de prueba, n = 902)
 
 | Modelo               | Exactitud | F1-macro | F1-macro CV |
 |----------------------|:---------:|:--------:|:-----------:|
-| Regresión logística  | 0.848     | 0.857    | 0.899       |
-| **SVM (RBF)**        | **0.957** | **0.958**| **0.970**   |
-| Random Forest        | 0.949     | 0.950    | 0.954       |
-| CNN (3 conv.)        | 0.946     | 0.947    | —           |
+| Regresión logística  | 0.837     | 0.838    | 0.856       |
+| **SVM (RBF)**        | 0.948     | 0.949    | **0.967**   |
+| Random Forest        | 0.943     | 0.944    | 0.950       |
+| CNN (3 conv.)        | 0.951     | 0.953    | —           |
 
-El mejor modelo se selecciona automáticamente por F1-macro (SVM).
+El mejor modelo se selecciona por **F1-macro en validación cruzada** (criterio
+que no usa el conjunto de prueba) → **SVM**. En el conjunto de prueba los tres
+mejores modelos quedan prácticamente empatados (≈0.95).
 
 ## Datos
 
@@ -26,8 +28,9 @@ Se usa el dataset público **Fruit Quality Classification** de Kaggle
 - `good` (1149, *Apple_Good*) y `bad` (1141, *Apple_Bad*).
 - `regular` (600): se obtiene **segmentando individualmente** cada fruta de la
   carpeta *Mixed Quality* (177 recortes) y aumentando los datos.
-- `data/own/{good,regular,bad}/`: aquí van las **fotos propias** (30–50, sobre
-  fondo simple). Se integran automáticamente al entrenar.
+- `data/own/{good,regular,bad}/`: **116 fotos propias** ya incluidas (48 sanas,
+  38 intermedias, 30 dañadas), sobre fondo simple. Se integran automáticamente al
+  entrenar. **Total: 3006 imágenes** (buena 1197, regular 638, mala 1171).
 
 > Las características de calidad se calculan **solo sobre la fruta segmentada**,
 > de modo que el modelo aprende la calidad y no el fondo de la foto.

@@ -53,10 +53,10 @@ una manzana, predice su \emph{calidad} (buena, regular, mala) y estima su
 la fruta para calcular un descriptor de 49 características de color, textura y
 defectos \emph{solo sobre la fruta} (invariante al fondo), y se comparan, bajo el
 mismo protocolo, tres modelos clásicos (regresión logística, SVM-RBF y Random
-Forest) y una red neuronal convolucional (CNN). Sobre 2976 imágenes (2890 del
-dataset público y 86 propias), la SVM logró la mejor F1-macro de prueba (0{,}960),
-seguida de Random Forest (0{,}951) y la CNN (0{,}944), superando claramente a la
-línea base logística (0{,}841). Se sigue
+Forest) y una red neuronal convolucional (CNN). Sobre 3006 imágenes (2890 del
+dataset público y 116 propias), los cuatro modelos alcanzaron un desempeño
+comparable en prueba (F1-macro 0{,}94--0{,}95); por validación cruzada la SVM-RBF
+fue la mejor (0{,}967), muy por encima de la línea base logística (0{,}838). Se sigue
 la metodología CRISP-DM y se discuten el sesgo de los datos, la validez de los
 resultados y los aspectos éticos.
 \end{abstract}
@@ -133,10 +133,10 @@ de Kaggle~\cite{kaggle}, subconjunto de manzanas: \emph{buena} (1149,
 individualmente cada fruta de la carpeta \textit{Mixed Quality} (177 ejemplares
 recortados) y aumentándola con transformaciones (volteos, rotaciones, brillo)
 hasta 600 muestras para reducir el desbalance. Además, se recolectaron y
-añadieron \textbf{86 fotografías propias} tomadas para este proyecto (48 sanas y
-38 intermedias), como exige el caso de estudio, integradas a las clases buena y
-regular. En total, \textbf{2976 imágenes} (buena 1197, regular 638, mala 1141).
-Las Figs.~\ref{fig:dist} muestran la distribución de calidad y tamaño.
+añadieron \textbf{116 fotografías propias} tomadas para este proyecto (48 sanas,
+38 intermedias y 30 dañadas), como exige el caso de estudio, integradas a las
+tres clases. En total, \textbf{3006 imágenes} (buena 1197, regular 638, mala
+1171). Las Figs.~\ref{fig:dist} muestran la distribución de calidad y tamaño.
 
 \begin{figure}[t]
 \centering
@@ -163,13 +163,13 @@ aprendan el fondo (césped, mano, mesa) en lugar de la calidad.
 \label{fig:seg}
 \end{figure}
 
-\textbf{Modelado.} Partición estratificada 70/30 (2083 entrenamiento, 893
+\textbf{Modelado.} Partición estratificada 70/30 (2104 entrenamiento, 902
 prueba, semilla 42) y estandarización ajustada en entrenamiento. Se entrenaron,
 con \texttt{class\_weight} balanceado, tres modelos clásicos con búsqueda en
 rejilla y validación cruzada de 5 pliegues (regresión logística, SVM-RBF, Random
 Forest) y una CNN pequeña (3 bloques convolucionales + 2 capas densas, entrada
 $64\times64$ enmascarada, Adam, entropía cruzada con pesos). El sistema
-selecciona automáticamente el mejor modelo por F1-macro.
+selecciona automáticamente el mejor modelo por F1-macro en validación cruzada.
 
 \textbf{Despliegue.} Aplicación en Streamlit que permite cargar una imagen o
 capturarla con la cámara y muestra calidad, tamaño y segmentación.
@@ -177,11 +177,12 @@ capturarla con la cámara y muestra calidad, tamaño y segmentación.
 %------------------------------------------------------------------ Resultados
 \section{Resultados}
 La Tabla~\ref{tab:res}, la Tabla~\ref{tab:pc} y la Fig.~\ref{fig:cmp} resumen el
-desempeño en el conjunto de prueba. La SVM-RBF obtuvo la mejor F1-macro
-(0{,}960), seguida por Random Forest (0{,}951) y la CNN (0{,}944); la regresión
-logística, como línea base, quedó claramente por debajo (0{,}841). La validación
-cruzada fue consistente con la prueba (p.\,ej. SVM: 0{,}964 en CV frente a
-0{,}960 en prueba), lo que indica ausencia de sobreajuste severo. Las matrices de
+desempeño. El modelo se selecciona por validación cruzada (sin usar el conjunto
+de prueba): la \textbf{SVM-RBF fue la mejor (F1-macro CV 0{,}967)}, seguida de
+Random Forest (0{,}950) y la regresión logística (0{,}856). En el conjunto de
+prueba los tres mejores modelos quedaron \emph{prácticamente empatados} (SVM
+0{,}949, CNN 0{,}953, Random Forest 0{,}944), muy por encima de la línea base
+(0{,}838); la cercanía entre CV y prueba indica ausencia de sobreajuste severo. Las matrices de
 confusión (Fig.~\ref{fig:cm}) muestran que los errores se concentran entre
 \emph{buena} y \emph{mala}. La importancia de características
 (Fig.~\ref{fig:imp}) confirma que los descriptores de color (saturación y matiz)
@@ -190,17 +191,18 @@ son los más decisivos, coherente con la intuición agronómica. La proyección 
 Fig.~\ref{fig:ex} ilustra predicciones de calidad y tamaño.
 
 \begin{table}[t]
-\caption{Resultados globales (prueba, $n=893$).}
+\caption{Resultados globales ($n_{prueba}=902$). El mejor modelo se elige por
+F1-macro en validación cruzada (CV).}
 \label{tab:res}
 \centering
 \begin{tabular}{lccc}
 \toprule
 Modelo & Exactitud & F1-macro & F1-macro CV \\
 \midrule
-Regresión logística & 0.837 & 0.841 & 0.855 \\
-\textbf{SVM (RBF)}  & \textbf{0.959} & \textbf{0.960} & \textbf{0.964} \\
-Random Forest       & 0.951 & 0.951 & 0.956 \\
-CNN (3 conv.)       & 0.944 & 0.944 & --- \\
+Regresión logística & 0.837 & 0.838 & 0.856 \\
+\textbf{SVM (RBF)}  & 0.948 & 0.949 & \textbf{0.967} \\
+Random Forest       & 0.943 & 0.944 & 0.950 \\
+CNN (3 conv.)       & 0.951 & 0.953 & --- \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -213,10 +215,10 @@ CNN (3 conv.)       & 0.944 & 0.944 & --- \\
 \toprule
 Modelo & Buena & Regular & Mala \\
 \midrule
-Reg. logística & 0.81 & 0.87 & 0.84 \\
-SVM (RBF)      & 0.95 & 0.97 & 0.96 \\
-Random Forest  & 0.95 & 0.95 & 0.95 \\
-CNN            & 0.94 & 0.95 & 0.95 \\
+Reg. logística & 0.82 & 0.84 & 0.85 \\
+SVM (RBF)      & 0.94 & 0.96 & 0.95 \\
+Random Forest  & 0.94 & 0.95 & 0.95 \\
+CNN            & 0.94 & 0.96 & 0.95 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -245,11 +247,14 @@ CNN            & 0.94 & 0.95 & 0.95 \\
 %------------------------------------------------------------------ Analisis
 \section{Análisis de resultados}
 \textbf{¿Generalizan? ¿Hay sobreajuste?} La cercanía entre CV y prueba indica que
-los modelos generalizan dentro de este dataset, sin sobreajuste marcado. La SVM y
-Random Forest dominan; la CNN, entrenada desde cero con $\sim$2{,}9k imágenes,
-queda ligeramente por debajo: \emph{con pocos datos, las características diseñadas
-a mano más una SVM superan a una CNN pequeña}, un hallazgo coherente con la
-literatura cuando los datos son limitados.
+los modelos generalizan dentro de este dataset, sin sobreajuste marcado.
+\emph{Los tres mejores modelos son estadísticamente comparables} (diferencias
+$<$1 punto en prueba): la CNN, que aprende de los píxeles, y los modelos clásicos
+(SVM y Random Forest), que usan características diseñadas a mano, alcanzan
+resultados equivalentes. Esto sugiere que, a esta escala de datos, las
+características de color son muy informativas y una CNN pequeña no aporta una
+ventaja clara. Se reporta la SVM como mejor modelo por su F1-macro en validación
+cruzada, el criterio de selección que no usa el conjunto de prueba.
 
 \textbf{¿Qué funciona y qué falla?} El sistema separa muy bien la fruta podrida
 (color marrón/oscuro) de la sana; los errores residuales ocurren entre buena y
@@ -292,11 +297,11 @@ aporta a los ODS 2 (hambre cero) y 12 (producción y consumo responsables).
 \section{Conclusiones y trabajo futuro}
 Se construyó un sistema reproducible que clasifica la calidad de la manzana en
 tres clases y estima su tamaño, comparando cuatro modelos bajo el mismo
-protocolo. La \textbf{SVM-RBF sobre características de la fruta segmentada} fue la
-mejor opción (F1-macro 0{,}960), por encima de una CNN entrenada desde cero a
-esta escala de datos. El mayor aprendizaje fue metodológico: \emph{segmentar y
-medir solo la fruta evita un sesgo de fondo que inflaba artificialmente las
-métricas}. Como trabajo futuro: ampliar y diversificar el dataset (más fotos
+protocolo. La \textbf{SVM-RBF sobre características de la fruta segmentada} fue el
+mejor modelo por validación cruzada (F1-macro 0{,}967), con la CNN y Random Forest
+a un nivel equivalente en el conjunto de prueba ($\approx$0{,}95). El mayor
+aprendizaje fue metodológico: \emph{segmentar y medir solo la fruta evita un sesgo
+de fondo que inflaba artificialmente las métricas}. Como trabajo futuro: ampliar y diversificar el dataset (más fotos
 propias y otras variedades, condiciones de captura distintas), usar transferencia
 de aprendizaje, segmentación
 con redes (U-Net) y una referencia de escala para obtener tamaño absoluto.

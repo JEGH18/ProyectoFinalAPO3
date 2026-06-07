@@ -102,15 +102,17 @@ def main(rebuild: bool = False):
             "confusion_matrix": cm.tolist(),
         }
         joblib.dump(model, os.path.join(MODELS_DIR, f"{name.lower()}.joblib"))
-        if f1m > best_f1:
-            best_f1, best_name = f1m, name
+        # El mejor modelo se elige por VALIDACIÓN CRUZADA (no por el conjunto de
+        # prueba), como indica el enunciado y para no usar el test en la selección.
+        if cvsc.mean() > best_f1:
+            best_f1, best_name = cvsc.mean(), name
 
     joblib.dump(scaler, os.path.join(MODELS_DIR, "scaler.joblib"))
     json.dump({"classes": CLASSES}, open(os.path.join(MODELS_DIR, "labels.json"), "w"))
     metrics["best_model"] = best_name
     open(os.path.join(MODELS_DIR, "best_model.txt"), "w").write(best_name)
     json.dump(metrics, open(os.path.join(RESULTS_DIR, "metrics.json"), "w"), indent=2)
-    print(f"\n>>> Mejor modelo clásico por F1-macro: {best_name} ({best_f1:.4f})")
+    print(f"\n>>> Mejor modelo por F1-macro en validación cruzada: {best_name} ({best_f1:.4f})")
     print(f"Modelos en {MODELS_DIR}, métricas en results/metrics.json")
     return metrics
 
