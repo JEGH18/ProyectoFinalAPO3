@@ -53,9 +53,10 @@ una manzana, predice su \emph{calidad} (buena, regular, mala) y estima su
 la fruta para calcular un descriptor de 49 características de color, textura y
 defectos \emph{solo sobre la fruta} (invariante al fondo), y se comparan, bajo el
 mismo protocolo, tres modelos clásicos (regresión logística, SVM-RBF y Random
-Forest) y una red neuronal convolucional (CNN). Sobre 2890 imágenes, la SVM logró
-la mejor F1-macro de prueba (0{,}958), seguida de Random Forest (0{,}950) y la
-CNN (0{,}947), superando claramente a la línea base logística (0{,}857). Se sigue
+Forest) y una red neuronal convolucional (CNN). Sobre 2976 imágenes (2890 del
+dataset público y 86 propias), la SVM logró la mejor F1-macro de prueba (0{,}960),
+seguida de Random Forest (0{,}951) y la CNN (0{,}944), superando claramente a la
+línea base logística (0{,}841). Se sigue
 la metodología CRISP-DM y se discuten el sesgo de los datos, la validez de los
 resultados y los aspectos éticos.
 \end{abstract}
@@ -131,9 +132,11 @@ de Kaggle~\cite{kaggle}, subconjunto de manzanas: \emph{buena} (1149,
 \emph{regular} se construyó, según indica el caso de estudio, segmentando
 individualmente cada fruta de la carpeta \textit{Mixed Quality} (177 ejemplares
 recortados) y aumentándola con transformaciones (volteos, rotaciones, brillo)
-hasta 600 muestras para reducir el desbalance. El sistema admite además fotos
-propias del usuario en \texttt{data/own/} (recolección requerida por el caso de
-estudio). Las Figs.~\ref{fig:dist} muestran la distribución de calidad y tamaño.
+hasta 600 muestras para reducir el desbalance. Además, se recolectaron y
+añadieron \textbf{86 fotografías propias} tomadas para este proyecto (48 sanas y
+38 intermedias), como exige el caso de estudio, integradas a las clases buena y
+regular. En total, \textbf{2976 imágenes} (buena 1197, regular 638, mala 1141).
+Las Figs.~\ref{fig:dist} muestran la distribución de calidad y tamaño.
 
 \begin{figure}[t]
 \centering
@@ -160,7 +163,7 @@ aprendan el fondo (césped, mano, mesa) en lugar de la calidad.
 \label{fig:seg}
 \end{figure}
 
-\textbf{Modelado.} Partición estratificada 70/30 (2023 entrenamiento, 867
+\textbf{Modelado.} Partición estratificada 70/30 (2083 entrenamiento, 893
 prueba, semilla 42) y estandarización ajustada en entrenamiento. Se entrenaron,
 con \texttt{class\_weight} balanceado, tres modelos clásicos con búsqueda en
 rejilla y validación cruzada de 5 pliegues (regresión logística, SVM-RBF, Random
@@ -175,10 +178,10 @@ capturarla con la cámara y muestra calidad, tamaño y segmentación.
 \section{Resultados}
 La Tabla~\ref{tab:res}, la Tabla~\ref{tab:pc} y la Fig.~\ref{fig:cmp} resumen el
 desempeño en el conjunto de prueba. La SVM-RBF obtuvo la mejor F1-macro
-(0{,}958), seguida por Random Forest (0{,}950) y la CNN (0{,}947); la regresión
-logística, como línea base, quedó claramente por debajo (0{,}857). La validación
-cruzada fue consistente con la prueba (p.\,ej. SVM: 0{,}970 en CV frente a
-0{,}958 en prueba), lo que indica ausencia de sobreajuste severo. Las matrices de
+(0{,}960), seguida por Random Forest (0{,}951) y la CNN (0{,}944); la regresión
+logística, como línea base, quedó claramente por debajo (0{,}841). La validación
+cruzada fue consistente con la prueba (p.\,ej. SVM: 0{,}964 en CV frente a
+0{,}960 en prueba), lo que indica ausencia de sobreajuste severo. Las matrices de
 confusión (Fig.~\ref{fig:cm}) muestran que los errores se concentran entre
 \emph{buena} y \emph{mala}. La importancia de características
 (Fig.~\ref{fig:imp}) confirma que los descriptores de color (saturación y matiz)
@@ -187,17 +190,17 @@ son los más decisivos, coherente con la intuición agronómica. La proyección 
 Fig.~\ref{fig:ex} ilustra predicciones de calidad y tamaño.
 
 \begin{table}[t]
-\caption{Resultados globales (prueba, $n=867$).}
+\caption{Resultados globales (prueba, $n=893$).}
 \label{tab:res}
 \centering
 \begin{tabular}{lccc}
 \toprule
 Modelo & Exactitud & F1-macro & F1-macro CV \\
 \midrule
-Regresión logística & 0.848 & 0.857 & 0.899 \\
-\textbf{SVM (RBF)}  & \textbf{0.957} & \textbf{0.958} & \textbf{0.970} \\
-Random Forest       & 0.949 & 0.950 & 0.954 \\
-CNN (3 conv.)       & 0.946 & 0.947 & --- \\
+Regresión logística & 0.837 & 0.841 & 0.855 \\
+\textbf{SVM (RBF)}  & \textbf{0.959} & \textbf{0.960} & \textbf{0.964} \\
+Random Forest       & 0.951 & 0.951 & 0.956 \\
+CNN (3 conv.)       & 0.944 & 0.944 & --- \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -210,9 +213,9 @@ CNN (3 conv.)       & 0.946 & 0.947 & --- \\
 \toprule
 Modelo & Buena & Regular & Mala \\
 \midrule
-Reg. logística & 0.82 & 0.91 & 0.84 \\
-SVM (RBF)      & 0.95 & 0.96 & 0.96 \\
-Random Forest  & 0.94 & 0.96 & 0.95 \\
+Reg. logística & 0.81 & 0.87 & 0.84 \\
+SVM (RBF)      & 0.95 & 0.97 & 0.96 \\
+Random Forest  & 0.95 & 0.95 & 0.95 \\
 CNN            & 0.94 & 0.95 & 0.95 \\
 \bottomrule
 \end{tabular}
@@ -290,11 +293,12 @@ aporta a los ODS 2 (hambre cero) y 12 (producción y consumo responsables).
 Se construyó un sistema reproducible que clasifica la calidad de la manzana en
 tres clases y estima su tamaño, comparando cuatro modelos bajo el mismo
 protocolo. La \textbf{SVM-RBF sobre características de la fruta segmentada} fue la
-mejor opción (F1-macro 0{,}958), por encima de una CNN entrenada desde cero a
+mejor opción (F1-macro 0{,}960), por encima de una CNN entrenada desde cero a
 esta escala de datos. El mayor aprendizaje fue metodológico: \emph{segmentar y
 medir solo la fruta evita un sesgo de fondo que inflaba artificialmente las
-métricas}. Como trabajo futuro: ampliar y diversificar el dataset (incluyendo las
-fotos propias y otras variedades), usar transferencia de aprendizaje, segmentación
+métricas}. Como trabajo futuro: ampliar y diversificar el dataset (más fotos
+propias y otras variedades, condiciones de captura distintas), usar transferencia
+de aprendizaje, segmentación
 con redes (U-Net) y una referencia de escala para obtener tamaño absoluto.
 
 \begin{figure}[t]
