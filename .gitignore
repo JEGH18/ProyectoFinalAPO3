@@ -1,0 +1,27 @@
+# Entorno virtual
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# Artefactos de LaTeX (se conserva el .tex y el .pdf final)
+docs/*.aux
+docs/*.log
+docs/*.out
+docs/*.bbl
+docs/*.blg
+docs/*.synctex.gz
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# NOTA: las imágenes en data/Apple/ SÍ se versionan para que el proyecto sea
+# reproducible. Si el repositorio queda muy pesado, comenta la línea siguiente
+# y documenta cómo descargar el dataset.
+# data/

@@ -1,0 +1,332 @@
+%==============================================================================
+%  INFORME FINAL - ALGORITMOS Y PROGRAMACION III (ICESI, 2026-1)
+%  Clasificacion de calidad y estimacion de tamano de manzanas por vision
+%  por computador.
+%
+%  COMPILAR: subir la carpeta docs/ a Overleaf, clase IEEEtran, pdfLaTeX.
+%            Las figuras (PDF vectorial) estan en docs/figures/.
+%  Maximo 7 paginas (lineamiento del enunciado).
+%
+%  >>> COMPLETAR antes de entregar: autores, correos, enlace al video y al repo.
+%==============================================================================
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=black,citecolor=black,urlcolor=blue}
+\graphicspath{{figures/}}
+
+\begin{document}
+
+\title{Clasificación de la calidad y estimación del tamaño de manzanas mediante
+visión por computador: comparación de modelos clásicos y una red neuronal
+convolucional}
+
+\author{
+\IEEEauthorblockN{COMPLETAR: Integrante 1}
+\IEEEauthorblockA{\textit{Algoritmos y Programación III}\\
+\textit{Universidad ICESI}, Cali, Colombia\\ COMPLETAR: correo@u.icesi.edu.co}
+\and
+\IEEEauthorblockN{COMPLETAR: Integrante 2}
+\IEEEauthorblockA{\textit{Algoritmos y Programación III}\\
+\textit{Universidad ICESI}, Cali, Colombia\\ COMPLETAR: correo@u.icesi.edu.co}
+\and
+\IEEEauthorblockN{COMPLETAR: Integrante 3}
+\IEEEauthorblockA{\textit{Algoritmos y Programación III}\\
+\textit{Universidad ICESI}, Cali, Colombia\\ COMPLETAR: correo@u.icesi.edu.co}
+}
+\maketitle
+
+%------------------------------------------------------------------ Resumen
+\begin{abstract}
+La clasificación manual de la calidad de frutas es lenta, subjetiva y propensa a
+errores, lo que genera pérdidas económicas y desperdicio de alimentos. Se
+desarrolla un sistema de visión por computador que, a partir de la fotografía de
+una manzana, predice su \emph{calidad} (buena, regular, mala) y estima su
+\emph{tamaño} (diámetro normalizado y clase pequeño/mediano/grande). Se segmenta
+la fruta para calcular un descriptor de 49 características de color, textura y
+defectos \emph{solo sobre la fruta} (invariante al fondo), y se comparan, bajo el
+mismo protocolo, tres modelos clásicos (regresión logística, SVM-RBF y Random
+Forest) y una red neuronal convolucional (CNN). Sobre 2890 imágenes, la SVM logró
+la mejor F1-macro de prueba (0{,}958), seguida de Random Forest (0{,}950) y la
+CNN (0{,}947), superando claramente a la línea base logística (0{,}857). Se sigue
+la metodología CRISP-DM y se discuten el sesgo de los datos, la validez de los
+resultados y los aspectos éticos.
+\end{abstract}
+\begin{IEEEkeywords}
+visión por computador, clasificación de calidad, segmentación, SVM, Random
+Forest, CNN, estimación de tamaño, CRISP-DM.
+\end{IEEEkeywords}
+
+%------------------------------------------------------------------ Introduccion
+\section{Introducción}
+En mercados y agroindustrias, la clasificación de productos frescos según
+madurez, tamaño o defectos se hace de forma manual: un proceso lento, subjetivo y
+costoso que contribuye a pérdidas y desperdicio de alimentos~\cite{fao}.
+Automatizarla con visión por computador permite acelerar el proceso y
+estandarizar criterios.
+
+Este proyecto desarrolla un sistema que, dada la foto de una manzana sobre fondo
+simple, entrega dos salidas exigidas por el caso de estudio: (i) la \emph{clase
+de calidad} en tres categorías (buena, regular, mala) y (ii) una \emph{estimación
+de tamaño}. La justificación es directa: reducir pérdidas poscosecha tiene
+impacto económico, social y ambiental. El aporte técnico se concentra en un
+descriptor de color/textura calculado únicamente sobre la fruta segmentada
+(evitando que el modelo aprenda el fondo), la comparación rigurosa de cuatro
+modelos y un análisis crítico de la validez de los resultados.
+
+%------------------------------------------------------------------ Fundamentos
+\section{Fundamentos teóricos}
+\textbf{Espacio HSV e histogramas.} El color es el principal indicador de calidad
+de la fruta. Se trabaja en el espacio HSV, que separa el tono (Matiz) de la
+intensidad. El histograma normalizado de un canal, $h_b=\frac{1}{N}\sum_p
+\mathbb{1}[c_p\in\text{bin}_b]$, cumple $\sum_b h_b=1$ y es invariante al número
+de píxeles (y a la resolución).
+
+\textbf{Estandarización (z-score).} Cada característica se reescala como
+$z=(x-\mu)/\sigma$, con $\mu,\sigma$ estimados solo en entrenamiento. Es
+necesaria para SVM-RBF, la regresión logística y la red neuronal, sensibles a la
+escala.
+
+\textbf{Segmentación y tamaño.} La fruta se separa del fondo con un umbral de
+Otsu sobre la distancia al color de fondo (estimado en los bordes). El tamaño se
+mide con el diámetro equivalente del área segmentada, $d_{eq}=2\sqrt{A/\pi}$,
+normalizado por el lado de la imagen (invariante a la resolución).
+
+\textbf{Modelos.} La \emph{regresión logística} (línea base) modela
+$P(y{=}k\,|\,\mathbf{x})$ con softmax. La \emph{SVM} busca el hiperplano de
+máximo margen y usa el kernel RBF
+$K(\mathbf{x}_i,\mathbf{x}_j)=\exp(-\gamma\lVert\mathbf{x}_i-\mathbf{x}_j\rVert^2)$
+para fronteras no lineales~\cite{cortes}. El \emph{Random Forest} promedia
+múltiples árboles con muestreo aleatorio, reduciendo la varianza. La \emph{CNN}
+aprende filtros sobre los píxeles mediante capas Conv--ReLU--Pooling y minimiza
+la entropía cruzada $\mathcal{L}=-\frac1n\sum_i\sum_k y_{ik}\log p_{ik}$ por
+retropropagación con Adam~\cite{kingma}.
+
+\textbf{Métricas.} A partir de la matriz de confusión se calculan precisión,
+exhaustividad (\emph{recall}) y $F1=2\,PR/(P+R)$ por clase; se reporta el
+\textbf{F1-macro} (promedio entre clases), adecuado ante el desbalance, validado
+con validación cruzada estratificada de 5 pliegues.
+
+%------------------------------------------------------------------ Metodologia
+\section{Metodología}
+Se aplicó CRISP-DM (Fig.~\ref{fig:crisp}) con evidencia en cada fase.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.92\textwidth]{fig_crispdm.pdf}
+\caption{Aplicación concreta de CRISP-DM al proyecto.}
+\label{fig:crisp}
+\end{figure*}
+
+\textbf{Datos.} Se usó el conjunto público \emph{Fruit Quality Classification}
+de Kaggle~\cite{kaggle}, subconjunto de manzanas: \emph{buena} (1149,
+\textit{Apple\_Good}) y \emph{mala} (1141, \textit{Apple\_Bad}). La clase
+\emph{regular} se construyó, según indica el caso de estudio, segmentando
+individualmente cada fruta de la carpeta \textit{Mixed Quality} (177 ejemplares
+recortados) y aumentándola con transformaciones (volteos, rotaciones, brillo)
+hasta 600 muestras para reducir el desbalance. El sistema admite además fotos
+propias del usuario en \texttt{data/own/} (recolección requerida por el caso de
+estudio). Las Figs.~\ref{fig:dist} muestran la distribución de calidad y tamaño.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\columnwidth]{fig_size_distribution.pdf}\\[2pt]
+\includegraphics[width=0.62\columnwidth]{fig_class_distribution.pdf}
+\caption{Distribución del tamaño medido (arriba) y de las clases de calidad
+(abajo).}
+\label{fig:dist}
+\end{figure}
+
+\textbf{Preparación y características.} Cada imagen se redimensiona a $128\times
+128$ (elimina el sesgo de resolución) y se segmenta la fruta
+(Fig.~\ref{fig:seg}). Sobre los píxeles de la fruta se calcula un vector de
+\textbf{49 características}: histogramas de H/S/V (16/8/8), media y desviación de
+R,G,B,H,S,V (12), estadísticos de gradiente (2, textura), proporción de píxeles
+oscuros y marrones (2, defectos) y entropía de matiz (1). \emph{Calcular las
+características solo sobre la fruta es una decisión clave}: evita que los modelos
+aprendan el fondo (césped, mano, mesa) en lugar de la calidad.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.98\columnwidth]{fig_segmentation.pdf}
+\caption{Segmentación de la fruta y estimación de tamaño (diámetro normalizado).}
+\label{fig:seg}
+\end{figure}
+
+\textbf{Modelado.} Partición estratificada 70/30 (2023 entrenamiento, 867
+prueba, semilla 42) y estandarización ajustada en entrenamiento. Se entrenaron,
+con \texttt{class\_weight} balanceado, tres modelos clásicos con búsqueda en
+rejilla y validación cruzada de 5 pliegues (regresión logística, SVM-RBF, Random
+Forest) y una CNN pequeña (3 bloques convolucionales + 2 capas densas, entrada
+$64\times64$ enmascarada, Adam, entropía cruzada con pesos). El sistema
+selecciona automáticamente el mejor modelo por F1-macro.
+
+\textbf{Despliegue.} Aplicación en Streamlit que permite cargar una imagen o
+capturarla con la cámara y muestra calidad, tamaño y segmentación.
+
+%------------------------------------------------------------------ Resultados
+\section{Resultados}
+La Tabla~\ref{tab:res}, la Tabla~\ref{tab:pc} y la Fig.~\ref{fig:cmp} resumen el
+desempeño en el conjunto de prueba. La SVM-RBF obtuvo la mejor F1-macro
+(0{,}958), seguida por Random Forest (0{,}950) y la CNN (0{,}947); la regresión
+logística, como línea base, quedó claramente por debajo (0{,}857). La validación
+cruzada fue consistente con la prueba (p.\,ej. SVM: 0{,}970 en CV frente a
+0{,}958 en prueba), lo que indica ausencia de sobreajuste severo. Las matrices de
+confusión (Fig.~\ref{fig:cm}) muestran que los errores se concentran entre
+\emph{buena} y \emph{mala}. La importancia de características
+(Fig.~\ref{fig:imp}) confirma que los descriptores de color (saturación y matiz)
+son los más decisivos, coherente con la intuición agronómica. La proyección PCA
+(Fig.~\ref{fig:pca}) muestra clases separables con zonas de solape, y la
+Fig.~\ref{fig:ex} ilustra predicciones de calidad y tamaño.
+
+\begin{table}[t]
+\caption{Resultados globales (prueba, $n=867$).}
+\label{tab:res}
+\centering
+\begin{tabular}{lccc}
+\toprule
+Modelo & Exactitud & F1-macro & F1-macro CV \\
+\midrule
+Regresión logística & 0.848 & 0.857 & 0.899 \\
+\textbf{SVM (RBF)}  & \textbf{0.957} & \textbf{0.958} & \textbf{0.970} \\
+Random Forest       & 0.949 & 0.950 & 0.954 \\
+CNN (3 conv.)       & 0.946 & 0.947 & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\caption{F1 por clase (prueba).}
+\label{tab:pc}
+\centering
+\begin{tabular}{lccc}
+\toprule
+Modelo & Buena & Regular & Mala \\
+\midrule
+Reg. logística & 0.82 & 0.91 & 0.84 \\
+SVM (RBF)      & 0.95 & 0.96 & 0.96 \\
+Random Forest  & 0.94 & 0.96 & 0.95 \\
+CNN            & 0.94 & 0.95 & 0.95 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\columnwidth]{fig_model_comparison.pdf}
+\caption{Comparación de los cuatro modelos.}
+\label{fig:cmp}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.99\columnwidth]{fig_confusions.pdf}
+\caption{Matrices de confusión normalizadas (prueba).}
+\label{fig:cm}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.92\columnwidth]{fig_feature_importance.pdf}
+\caption{Importancia de características (Random Forest).}
+\label{fig:imp}
+\end{figure}
+
+%------------------------------------------------------------------ Analisis
+\section{Análisis de resultados}
+\textbf{¿Generalizan? ¿Hay sobreajuste?} La cercanía entre CV y prueba indica que
+los modelos generalizan dentro de este dataset, sin sobreajuste marcado. La SVM y
+Random Forest dominan; la CNN, entrenada desde cero con $\sim$2{,}9k imágenes,
+queda ligeramente por debajo: \emph{con pocos datos, las características diseñadas
+a mano más una SVM superan a una CNN pequeña}, un hallazgo coherente con la
+literatura cuando los datos son limitados.
+
+\textbf{¿Qué funciona y qué falla?} El sistema separa muy bien la fruta podrida
+(color marrón/oscuro) de la sana; los errores residuales ocurren entre buena y
+mala con iluminación o manchas ambiguas. Segmentar y usar características solo de
+la fruta fue decisivo: en una versión previa con el fondo incluido, la clase
+\emph{regular} alcanzaba un 100\% irreal porque el modelo reconocía el fondo de
+los recortes; al enmascarar el fondo, la métrica bajó a valores realistas
+(0{,}96) y honestos.
+
+\textbf{Limitaciones.} (i) La clase \emph{regular} se construyó con recortes
+segmentados de la carpeta \textit{Mixed} y aumento de datos, por lo que es menos
+diversa. (ii) Las imágenes provienen de un único dataset; el desempeño podría
+caer con cámaras, iluminación o variedades distintas (cambio de dominio). (iii)
+La estimación de tamaño depende de la calidad de la segmentación y de un fondo
+simple; sin referencia de escala, entrega un diámetro \emph{relativo}, no
+absoluto. (iv) En la literatura, FruitNet reporta exactitudes del orden de
+85--95\,\% con CNN; nuestros resultados son comparables, recordando que el dato
+es relativamente ``limpio''.
+
+%------------------------------------------------------------------ Etica e impactos
+\section{Aspectos éticos e impactos}
+\textbf{Ética (código ACM/IEEE~\cite{acm}).} \emph{Sesgo y equidad}: el modelo
+entrenado en un dataset específico puede ser injusto con frutas de otros
+orígenes; se mitiga documentando el sesgo y permitiendo recolección propia.
+\emph{Privacidad}: algunas imágenes contienen manos; no se almacenan datos
+personales y deben usarse con consentimiento. \emph{Uso responsable}: es una
+herramienta de \emph{apoyo}; un error tiene costo económico, por lo que se
+recomienda supervisión humana. \emph{Integridad}: se referencian explícitamente
+los datos y el código de terceros (el dataset de Kaggle~\cite{kaggle} y las
+bibliotecas~\cite{scikit}), tal como exige la honestidad académica.
+
+\textbf{Impactos.} \emph{Económico}: menos fruta buena descartada y clasificación
+más rápida reducen costos. \emph{Ambiental}: disminuir el desperdicio evita
+malgastar el agua, suelo y energía incorporados a la fruta; los modelos clásicos
+tienen huella de cómputo baja (sin GPU). \emph{Social}: estandariza un criterio
+hoy subjetivo, aunque debe acompañarse de recapacitación laboral. \emph{Global}:
+aporta a los ODS 2 (hambre cero) y 12 (producción y consumo responsables).
+
+%------------------------------------------------------------------ Conclusiones
+\section{Conclusiones y trabajo futuro}
+Se construyó un sistema reproducible que clasifica la calidad de la manzana en
+tres clases y estima su tamaño, comparando cuatro modelos bajo el mismo
+protocolo. La \textbf{SVM-RBF sobre características de la fruta segmentada} fue la
+mejor opción (F1-macro 0{,}958), por encima de una CNN entrenada desde cero a
+esta escala de datos. El mayor aprendizaje fue metodológico: \emph{segmentar y
+medir solo la fruta evita un sesgo de fondo que inflaba artificialmente las
+métricas}. Como trabajo futuro: ampliar y diversificar el dataset (incluyendo las
+fotos propias y otras variedades), usar transferencia de aprendizaje, segmentación
+con redes (U-Net) y una referencia de escala para obtener tamaño absoluto.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.82\columnwidth]{fig_pca.pdf}
+\caption{Proyección PCA del espacio de características.}
+\label{fig:pca}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.99\columnwidth]{fig_examples.pdf}
+\caption{Ejemplos de predicción de calidad y tamaño (SVM).}
+\label{fig:ex}
+\end{figure}
+
+\section*{Enlaces}
+\noindent\textbf{Video (máx. 10 min):} \url{COMPLETAR: enlace del video}\\
+\textbf{Repositorio (código documentado):}
+\url{COMPLETAR: https://github.com/usuario/proyectoAPo3FInal}
+
+\begin{thebibliography}{9}
+\bibitem{fao} FAO, ``Pérdidas y desperdicio de alimentos,'' 2019.
+\bibitem{kaggle} R. Park, ``Fruit Quality Classification,'' Kaggle, 2023.
+[En línea]. \url{https://www.kaggle.com/datasets/ryandpark/fruit-quality-classification}
+\bibitem{cortes} C. Cortes y V. Vapnik, ``Support-vector networks,'' \textit{Machine
+Learning}, vol. 20, no. 3, pp. 273--297, 1995.
+\bibitem{kingma} D. P. Kingma y J. Ba, ``Adam: A method for stochastic
+optimization,'' \textit{ICLR}, 2015.
+\bibitem{scikit} F. Pedregosa \textit{et al.}, ``Scikit-learn: Machine learning in
+Python,'' \textit{JMLR}, vol. 12, pp. 2825--2830, 2011.
+\bibitem{acm} ACM, ``ACM Code of Ethics and Professional Conduct,'' 2018.
+\end{thebibliography}
+
+\end{document}

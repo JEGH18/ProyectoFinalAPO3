@@ -1,0 +1,8 @@
+Coloca aquí tus 30-50 fotos propias de manzana (enunciado 2.2).
+Fondo simple y uniforme, una sola manzana centrada, buena luz.
+
+  data/own/good/      -> manzanas sanas
+  data/own/regular/   -> manzanas con golpes/manchas leves
+  data/own/bad/       -> manzanas dañadas (opcional)
+
+Se integran automáticamente al ejecutar src/train.py.
