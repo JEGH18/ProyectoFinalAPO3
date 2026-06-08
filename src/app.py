@@ -79,10 +79,10 @@ else:
 if img is not None:
     c1, c2 = st.columns(2)
     with c1:
-        st.image(img, caption="Entrada", use_container_width=True)
+        st.image(img, caption="Entrada", width="stretch")
     with c2:
         st.image(overlay(img), caption="Segmentación de la fruta",
-                 use_container_width=True)
+                 width="stretch")
 
     preds = predict(img, scaler, models, classes, cnn)
     d, scls = measure_size(np.asarray(img.resize((256, 256)),

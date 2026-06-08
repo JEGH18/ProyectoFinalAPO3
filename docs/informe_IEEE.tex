@@ -6,8 +6,6 @@
 %  COMPILAR: subir la carpeta docs/ a Overleaf, clase IEEEtran, pdfLaTeX.
 %            Las figuras (PDF vectorial) estan en docs/figures/.
 %  Maximo 7 paginas (lineamiento del enunciado).
-%
-%  >>> COMPLETAR antes de entregar: autores, correos, enlace al video y al repo.
 %==============================================================================
 \documentclass[conference]{IEEEtran}
 \IEEEoverridecommandlockouts
@@ -29,17 +27,17 @@ visión por computador: comparación de modelos clásicos y una red neuronal
 convolucional}
 
 \author{
-\IEEEauthorblockN{COMPLETAR: Integrante 1}
+\IEEEauthorblockN{David Alejandro Troya}
 \IEEEauthorblockA{\textit{Algoritmos y Programación III}\\
-\textit{Universidad ICESI}, Cali, Colombia\\ COMPLETAR: correo@u.icesi.edu.co}
+\textit{Universidad ICESI}, Cali, Colombia\\ troyaalejandro4@gmail.com}
 \and
-\IEEEauthorblockN{COMPLETAR: Integrante 2}
+\IEEEauthorblockN{Santiago Morales Cerón}
 \IEEEauthorblockA{\textit{Algoritmos y Programación III}\\
-\textit{Universidad ICESI}, Cali, Colombia\\ COMPLETAR: correo@u.icesi.edu.co}
+\textit{Universidad ICESI}, Cali, Colombia\\ Santiagomorales.c15@gmail.com}
 \and
-\IEEEauthorblockN{COMPLETAR: Integrante 3}
+\IEEEauthorblockN{Juan Esteban Gómez Higidio}
 \IEEEauthorblockA{\textit{Algoritmos y Programación III}\\
-\textit{Universidad ICESI}, Cali, Colombia\\ COMPLETAR: correo@u.icesi.edu.co}
+\textit{Universidad ICESI}, Cali, Colombia\\ 09juanesteban@gmail.com}
 }
 \maketitle
 
@@ -84,6 +82,7 @@ modelos y un análisis crítico de la validez de los resultados.
 
 %------------------------------------------------------------------ Fundamentos
 \section{Fundamentos teóricos}
+\label{sec:fundamentos}
 \textbf{Espacio HSV e histogramas.} El color es el principal indicador de calidad
 de la fruta. Se trabaja en el espacio HSV, que separa el tono (Matiz) de la
 intensidad. El histograma normalizado de un canal, $h_b=\frac{1}{N}\sum_p
@@ -115,9 +114,89 @@ exhaustividad (\emph{recall}) y $F1=2\,PR/(P+R)$ por clase; se reporta el
 \textbf{F1-macro} (promedio entre clases), adecuado ante el desbalance, validado
 con validación cruzada estratificada de 5 pliegues.
 
+%------------------------------------------------------------------ Formulacion
+\section{Formulación matemática del problema}
+\label{sec:formulacion}
+Sea $I\in[0,1]^{H\times W\times 3}$ la fotografía de una manzana sobre fondo
+simple ($H=W=128$). El sistema debe construir dos funciones: un
+\emph{clasificador de calidad} $g:I\mapsto y\in\mathcal{Y}=\{\text{buena},
+\text{regular},\text{mala}\}$ y un \emph{estimador de tamaño}
+$h:I\mapsto(d,\hat s)$, con $d\in[0,1]$ el diámetro normalizado y $\hat
+s\in\{\text{pequeño},\text{mediano},\text{grande}\}$.
+
+\textbf{Representación.} Se define $\phi=\phi_2\circ\phi_1$, con
+$\phi_1(I)=M\in\{0,1\}^{H\times W}$ la máscara de segmentación (umbral de Otsu,
+Sec.~\ref{sec:fundamentos}) y $\phi_2(I,M)=\mathbf{x}\in\mathbb{R}^{49}$ el
+descriptor de color/textura/defectos calculado solo sobre $M$. Para los modelos
+clásicos $g=f_\theta\circ\phi$; para la CNN, $g=f_\theta$ actúa directamente
+sobre $I\odot M$ redimensionada a $64\times64$, de modo que $\phi$ es la
+identidad enmascarada y la representación se \emph{aprende} dentro de
+$f_\theta$ en lugar de diseñarse a mano.
+
+\textbf{Aprendizaje como minimización del riesgo empírico regularizado.} Dado
+$D=\{(\mathbf{x}_i,y_i)\}_{i=1}^{n}$ ($n=2104$), se busca
+\[
+\theta^\ast=\arg\min_{\theta\in\Theta}\ \frac{1}{n}\sum_{i=1}^{n}
+w_{y_i}\,\mathcal{L}\big(f_\theta(\mathbf{x}_i),y_i\big)+\lambda\,R(\theta),
+\]
+donde $f_\theta:\mathbb{R}^{49}\to\Delta^{2}$ (o
+$f_\theta:[0,1]^{64\times64\times3}\to\Delta^{2}$ en la CNN) entrega una
+distribución sobre las 3 clases, $\mathcal{L}$ es la entropía cruzada de la
+Sec.~\ref{sec:fundamentos}, $w_{y_i}=n/(3\,n_{y_i})$ son los pesos balanceados
+de clase (compensan el desbalance 1197/638/1171), $R$ es el regularizador
+propio de cada familia ($\ell_2$ en regresión logística; margen y par
+$(C,\gamma)$ del kernel en SVM-RBF; profundidad y número de árboles en Random
+Forest; arquitectura y \emph{weight decay} en la CNN) y $\Theta$ es el espacio
+de hipótesis correspondiente.
+
+\textbf{Selección de modelo e hiperparámetros (optimización de segundo
+nivel).} Se resuelve por búsqueda en rejilla con validación cruzada
+estratificada de 5 pliegues, maximizando el F1-macro de la
+Sec.~\ref{sec:fundamentos}:
+\[
+(m^\ast,\lambda^\ast)=\arg\max_{(m,\lambda)\in\mathcal{M}\times\Lambda}\
+\frac{1}{5}\sum_{k=1}^{5} F1_{\text{macro}}\big(f^{(m,\lambda)};
+D^{(k)}_{\text{val}}\big),
+\]
+con $\mathcal{M}=\{\text{LogReg},\text{SVM-RBF},\text{RF},\text{CNN}\}$ y
+$\Lambda$ la rejilla propia de cada familia (resultado: $m^\ast=$ SVM-RBF,
+Tabla~\ref{tab:res}). Nótese que este es un problema de optimización anidado:
+para cada $(m,\lambda)$ candidato se resuelve internamente el problema de
+minimización de $\theta$ descrito arriba.
+
+\textbf{Estimación de tamaño (medición, no aprendizaje).} A partir de
+$M=\phi_1(I)$ se mide el diámetro equivalente normalizado
+$d=2\sqrt{A/\pi}\,/\sqrt{HW}$, $A=\sum_{p}M_p$ (Sec.~\ref{sec:fundamentos}), y
+se discretiza con umbrales $\tau_1,\tau_2$ calibrados sobre la distribución
+empírica del conjunto: $\hat s=$ pequeño si $d<\tau_1$, mediano si
+$\tau_1\le d<\tau_2$, grande si $d\ge\tau_2$, con $\tau_1=0{,}45$ y
+$\tau_2=0{,}62$.
+
+\textbf{¿Por qué es un problema complejo de ingeniería?} (a) $g$ debe
+aproximar una función no lineal de alta dimensión —$128\times128\times3=49152$
+variables de entrada— hacia 3 clases, sin una regla cerrada conocida; (b) hay
+que resolver \emph{a la vez} un problema de representación ($\phi$: qué
+calcular) y uno de aprendizaje ($f_\theta$: qué ajustar) que interactúan entre
+sí —la Sec.~\ref{sec:analisis} muestra que omitir la máscara en $\phi$ produce
+una métrica artificialmente alta e inválida (fuga de información del fondo)—;
+(c) las clases están desbalanceadas y la clase \emph{regular} se construyó de
+forma sintética, lo que obliga a introducir $w_{y_i}$ y validación
+estratificada; (d) coexisten cuatro espacios de hipótesis con geometrías y
+costos de búsqueda distintos, y compararlos limpiamente exige fijar partición,
+semilla, estandarización y métrica (Sec.~\ref{sec:metodologia}); (e) la
+estimación de tamaño añade una tarea de \emph{medición geométrica}
+(segmentación y calibración de $\tau_1,\tau_2$) acoplada a la de clasificación.
+Esta formulación conecta directamente con el objetivo del proyecto: producir,
+a partir de una sola fotografía, las dos salidas exigidas por el caso de
+estudio bajo un protocolo de comparación reproducible y honesto.
+
 %------------------------------------------------------------------ Metodologia
 \section{Metodología}
-Se aplicó CRISP-DM (Fig.~\ref{fig:crisp}) con evidencia en cada fase.
+\label{sec:metodologia}
+Se aplicó CRISP-DM (Fig.~\ref{fig:crisp}) con evidencia en cada fase. La
+formulación de la Sec.~\ref{sec:formulacion} guía cada decisión: qué calcular
+($\phi$), qué familias de modelos comparar ($\mathcal{M}$) y con qué criterio
+elegir ($F1_{\text{macro}}$ por validación cruzada).
 
 \begin{figure*}[t]
 \centering
@@ -163,13 +242,43 @@ aprendan el fondo (césped, mano, mesa) en lugar de la calidad.
 \label{fig:seg}
 \end{figure}
 
-\textbf{Modelado.} Partición estratificada 70/30 (2104 entrenamiento, 902
-prueba, semilla 42) y estandarización ajustada en entrenamiento. Se entrenaron,
-con \texttt{class\_weight} balanceado, tres modelos clásicos con búsqueda en
-rejilla y validación cruzada de 5 pliegues (regresión logística, SVM-RBF, Random
-Forest) y una CNN pequeña (3 bloques convolucionales + 2 capas densas, entrada
-$64\times64$ enmascarada, Adam, entropía cruzada con pesos). El sistema
-selecciona automáticamente el mejor modelo por F1-macro en validación cruzada.
+\textbf{Estrategia de solución y alternativas consideradas.} La formulación
+(Sec.~\ref{sec:formulacion}) deja dos preguntas abiertas: (1) ¿basta un
+descriptor diseñado a mano de 49 variables, o se necesita aprender la
+representación directamente de los píxeles?, y (2) sobre ese descriptor, ¿qué
+\emph{forma} de frontera de decisión —lineal, de margen máximo no lineal, o de
+comité de árboles— ajusta mejor $g$? En lugar de asumir una respuesta, se
+comparan bajo el mismo protocolo cuatro hipótesis representativas:
+\emph{regresión logística} como \textbf{línea base} lineal e interpretable —si
+un modelo no lineal no la supera con claridad, no se justifica su mayor costo—;
+\emph{SVM-RBF}, que mediante el kernel $K$ (Sec.~\ref{sec:fundamentos})
+construye fronteras no lineales en espacios de pocas decenas de dimensiones sin
+requerir datasets masivos, el escenario típico de un descriptor diseñado a
+mano~\cite{cortes}; \emph{Random Forest}, robusto a variables en escalas y
+correlaciones distintas (como ocurre entre histogramas de color contiguos),
+que reduce varianza promediando árboles y, a diferencia de SVM y CNN, entrega
+\emph{importancia de características} (Fig.~\ref{fig:imp}) útil para validar
+si el modelo aprende señales agronómicamente sensatas; y una \emph{CNN}
+pequeña (3 bloques convolucionales + 2 capas densas, entrada $64\times64$
+enmascarada, Adam, entropía cruzada con pesos~\cite{kingma}), incluida como
+contraste directo de la hipótesis alternativa (1): aprender $\phi$ en lugar de
+diseñarlo. Se descartaron explícitamente \emph{KNN} (sensible a la maldición de
+la dimensionalidad y a la correlación entre histogramas adyacentes),
+\emph{Gradient Boosting} (espacio de hiperparámetros más amplio y mayor riesgo
+de sobreajuste dado el tamaño moderado y el desbalance del dataset, sin ganancia
+esperada sobre Random Forest) y arquitecturas profundas preentrenadas
+(\emph{transfer learning} tipo ResNet/EfficientNet, descartadas por la
+simplicidad del fondo y el tamaño del conjunto; se documentan como trabajo
+futuro).
+
+Para que la comparación sea válida —y la elección del ganador, defendible— se
+fijaron partición estratificada 70/30 (2104 entrenamiento, 902 prueba, semilla
+42), estandarización ajustada \emph{solo} en entrenamiento,
+\texttt{class\_weight} balanceado ($w_{y_i}$ de la Sec.~\ref{sec:formulacion})
+y un único criterio de selección automática: el F1-macro en validación cruzada
+estratificada de 5 pliegues, que \emph{no} usa el conjunto de prueba —evita que
+la elección del modelo esté contaminada por los datos sobre los que luego se
+informa el desempeño final—.
 
 \textbf{Despliegue.} Aplicación en Streamlit que permite cargar una imagen o
 capturarla con la cámara y muestra calidad, tamaño y segmentación.
@@ -246,6 +355,7 @@ CNN            & 0.94 & 0.96 & 0.95 \\
 
 %------------------------------------------------------------------ Analisis
 \section{Análisis de resultados}
+\label{sec:analisis}
 \textbf{¿Generalizan? ¿Hay sobreajuste?} La cercanía entre CV y prueba indica que
 los modelos generalizan dentro de este dataset, sin sobreajuste marcado.
 \emph{Los tres mejores modelos son estadísticamente comparables} (diferencias
@@ -270,28 +380,129 @@ diversa. (ii) Las imágenes provienen de un único dataset; el desempeño podrí
 caer con cámaras, iluminación o variedades distintas (cambio de dominio). (iii)
 La estimación de tamaño depende de la calidad de la segmentación y de un fondo
 simple; sin referencia de escala, entrega un diámetro \emph{relativo}, no
-absoluto. (iv) En la literatura, FruitNet reporta exactitudes del orden de
+absoluto. (iv) La segmentación (Sec.~\ref{sec:fundamentos}) asume una sola
+fruta como objeto dominante: selecciona la componente conexa más grande que
+contrasta con el fondo, sin verificar que en efecto sea una manzana; con varias
+frutas, fondos complejos o presencia de otros objetos puede aislar (y por
+tanto clasificar) algo distinto de la manzana. (v) En la literatura, FruitNet
+reporta exactitudes del orden de
 85--95\,\% con CNN; nuestros resultados son comparables, recordando que el dato
 es relativamente ``limpio''.
 
 %------------------------------------------------------------------ Etica e impactos
 \section{Aspectos éticos e impactos}
-\textbf{Ética (código ACM/IEEE~\cite{acm}).} \emph{Sesgo y equidad}: el modelo
-entrenado en un dataset específico puede ser injusto con frutas de otros
-orígenes; se mitiga documentando el sesgo y permitiendo recolección propia.
-\emph{Privacidad}: algunas imágenes contienen manos; no se almacenan datos
-personales y deben usarse con consentimiento. \emph{Uso responsable}: es una
-herramienta de \emph{apoyo}; un error tiene costo económico, por lo que se
-recomienda supervisión humana. \emph{Integridad}: se referencian explícitamente
-los datos y el código de terceros (el dataset de Kaggle~\cite{kaggle} y las
-bibliotecas~\cite{scikit}), tal como exige la honestidad académica.
+\label{sec:etica}
+\textbf{Dilemas éticos identificados y decisiones tomadas, en relación directa
+con los principios del \emph{ACM Code of Ethics and Professional
+Conduct}~\cite{acm} (versión adoptada también por IEEE-CS).}
 
-\textbf{Impactos.} \emph{Económico}: menos fruta buena descartada y clasificación
-más rápida reducen costos. \emph{Ambiental}: disminuir el desperdicio evita
-malgastar el agua, suelo y energía incorporados a la fruta; los modelos clásicos
-tienen huella de cómputo baja (sin GPU). \emph{Social}: estandariza un criterio
-hoy subjetivo, aunque debe acompañarse de recapacitación laboral. \emph{Global}:
-aporta a los ODS 2 (hambre cero) y 12 (producción y consumo responsables).
+\emph{Sesgo y equidad} (Principio 1.4, ``ser justo y no discriminar''): un
+modelo entrenado sobre un dataset de origen único (variedad, iluminación y
+cámara del conjunto de Kaggle) puede generalizar mal —y resultar injusto— con
+frutas de otros productores, regiones o condiciones de cultivo, perjudicando
+económicamente a quien lo use. \textbf{Decisión adoptada:} documentar el sesgo
+explícitamente (ver Limitaciones) y ampliar el conjunto con 116 fotografías
+propias, capturadas en condiciones distintas a las del dataset original, como
+medida concreta y reproducible de mitigación.
+
+\emph{Privacidad y consentimiento} (Principios 1.6 ``respetar la privacidad'' y
+1.7 ``honrar la confidencialidad''): varias fotografías —tanto del dataset
+público como las propias— muestran manos o superficies que podrían identificar
+a una persona o un lugar. \textbf{Decisión adoptada:} (a) las fotografías
+propias fueron tomadas y aportadas por los mismos autores, quienes consintieron
+expresamente su uso académico y su publicación en el repositorio del curso; (b)
+no se almacenan ni publican metadatos personales (geolocalización, EXIF,
+nombres); (c) la segmentación recorta el fondo \emph{antes} de calcular
+características, lo que de paso reduce la información personal retenida en el
+pipeline de cómputo.
+
+\emph{Honestidad académica e integridad} (Principios 1.3 ``ser honesto y
+confiable'' y 2.5 ``dar evaluaciones completas y objetivas''): se decidió
+reportar, en vez de omitir, el episodio en que la clase \emph{regular} alcanzó
+un F1 irreal de 100\,\% por una fuga de información del fondo
+(Sec.~\ref{sec:analisis}), y elegir el modelo final por validación cruzada
+—nunca por el conjunto de prueba— para no inflar artificialmente la cifra que
+se reporta. Se referencian explícitamente el dataset de
+terceros~\cite{kaggle} y las bibliotecas usadas~\cite{scikit}.
+
+\emph{Uso responsable y prevención de daño} (Principio 1.2 ``evitar daño''):
+una predicción errónea de calidad tiene costo económico (descartar fruta sana)
+o sanitario (aceptar fruta en mal estado). \textbf{Decisión adoptada:}
+presentar el sistema como \emph{herramienta de apoyo a la decisión humana}, no
+como reemplazo de un clasificador experto; publicar el F1 por clase
+(Tabla~\ref{tab:pc}) para que cualquier usuario sepa en qué clase el sistema es
+menos confiable; y documentar explícitamente el supuesto de operación —una
+sola fruta sobre fondo simple— y sus consecuencias (párrafo de Limitaciones,
+Sec.~\ref{sec:analisis}),
+de modo que quien despliegue o evalúe el sistema entienda \emph{cuándo} confiar
+menos en la predicción (p.\ ej., con varias frutas u objetos ajenos en la
+imagen, la segmentación puede describir algo distinto de la manzana).
+
+La Tabla~\ref{tab:etica} resume estos cuatro dilemas, el principio concreto del
+código de ética que cada uno involucra y la medida adoptada en el proyecto.
+
+\begin{table}[t]
+\caption{Dilemas éticos identificados, principio del código ACM/IEEE
+involucrado y medida concreta adoptada en el proyecto.}
+\label{tab:etica}
+\centering
+\begin{tabular}{p{1.7cm}p{2.6cm}p{3.1cm}}
+\toprule
+Dilema & Principio (ACM/IEEE~\cite{acm}) & Medida adoptada \\
+\midrule
+Sesgo de origen único & 1.4 Ser justo y no discriminar & Documentar el sesgo;
+ampliar el dataset con 116 fotos propias en condiciones distintas \\
+Privacidad / consentimiento & 1.6 Privacidad; 1.7 Confidencialidad &
+Fotos propias con consentimiento expreso de los autores; sin metadatos
+personales; recorte del fondo antes de procesar \\
+Honestidad académica & 1.3 Honestidad; 2.5 Evaluación objetiva y completa &
+Reportar la fuga de información detectada; seleccionar por CV (no por prueba);
+citar fuentes de datos y software \\
+Riesgo de daño / uso responsable & 1.2 Evitar daño & Presentar el sistema como
+apoyo a la decisión humana; publicar F1 por clase; documentar el supuesto de
+operación (una fruta, fondo simple) y sus límites \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Análisis de impactos y estrategias de mitigación.} La Tabla~\ref{tab:impactos}
+resume, para cada dimensión exigida por la guía, el argumento técnico-ético y la
+estrategia concreta propuesta para potenciar los beneficios y mitigar los
+riesgos.
+
+\begin{table}[t]
+\caption{Matriz de impactos: análisis por dimensión y estrategia de
+mitigación/potenciación propuesta.}
+\label{tab:impactos}
+\centering
+\begin{tabular}{p{1.3cm}p{3.0cm}p{3.1cm}}
+\toprule
+Dimensión & Análisis (beneficio / riesgo) & Estrategia propuesta \\
+\midrule
+Económico & Reduce el descarte de fruta vendible y agiliza la clasificación;
+pero un falso ``mala'' desecha producto sano y un falso ``buena'' puede dañar
+la reputación del vendedor (Tabla~\ref{tab:pc} cuantifica ese riesgo por clase)
+& Calibrar el umbral de decisión según el costo asimétrico del caso de uso y
+mantener supervisión humana en las predicciones de menor confianza \\
+Ambiental & Menos desperdicio implica ahorrar el agua, el suelo y la energía ya
+invertidos en la fruta descartada (huella evitada); los modelos clásicos
+corren en CPU, con bajo consumo frente a redes profundas grandes &
+Preferir en producción el modelo clásico (SVM o Random Forest) sobre la CNN
+cuando el desempeño sea equivalente —como ocurre aquí (Tabla~\ref{tab:res})—,
+pues reduce el cómputo y la huella de carbono del despliegue \\
+Social & Estandariza un criterio hoy subjetivo y reduce la exposición de
+operarios a tareas repetitivas; pero puede desplazar empleo de clasificación
+manual & Comunicar el sistema como herramienta de \emph{apoyo} (no reemplazo,
+como se argumentó arriba) y acompañar su adopción con programas de
+recapacitación hacia tareas de supervisión y control de calidad \\
+Global & Contribuye a los Objetivos de Desarrollo Sostenible 2 (Hambre cero) y
+12 (Producción y consumo responsables)~\cite{onu}, al atacar directamente las
+pérdidas poscosecha que documenta la FAO~\cite{fao} & Publicar el código y el
+modelo (Sec. Enlaces) para que comunidades agrícolas de otras regiones lo
+adapten a sus propias variedades, mitigando a la vez el sesgo de origen único \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 %------------------------------------------------------------------ Conclusiones
 \section{Conclusiones y trabajo futuro}
@@ -321,12 +532,14 @@ con redes (U-Net) y una referencia de escala para obtener tamaño absoluto.
 \end{figure}
 
 \section*{Enlaces}
-\noindent\textbf{Video (máx. 10 min):} \url{COMPLETAR: enlace del video}\\
+\noindent\textbf{Video (máx. 10 min):} \url{https://youtu.be/27Uq-99Mdik}\\
 \textbf{Repositorio (código documentado):}
-\url{COMPLETAR: https://github.com/usuario/proyectoAPo3FInal}
+\url{https://github.com/JEGH18/ProyectoFinalAPO3}
 
 \begin{thebibliography}{9}
 \bibitem{fao} FAO, ``Pérdidas y desperdicio de alimentos,'' 2019.
+\bibitem{onu} Naciones Unidas, ``Objetivos de Desarrollo Sostenible,'' 2015.
+[En línea]. \url{https://www.un.org/sustainabledevelopment/es/}
 \bibitem{kaggle} R. Park, ``Fruit Quality Classification,'' Kaggle, 2023.
 [En línea]. \url{https://www.kaggle.com/datasets/ryandpark/fruit-quality-classification}
 \bibitem{cortes} C. Cortes y V. Vapnik, ``Support-vector networks,'' \textit{Machine
